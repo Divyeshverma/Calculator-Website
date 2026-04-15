@@ -1,0 +1,40 @@
+body {
+    background: black;
+    color: #00ff00;
+    font-family: monospace;
+    margin: 0;
+}
+
+.hidden {
+    display: none;
+}
+
+#bootScreen {
+    font-size: 24px;
+    text-align: center;
+    margin-top: 40vh;
+}
+
+#loginScreen {
+    text-align: center;
+    margin-top: 20vh;
+}
+
+#terminal {
+    padding: 15px;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.input-line {
+    display: flex;
+}
+
+input {
+    background: black;
+    color: #00ff00;
+    border: none;
+    outline: none;
+    font-family: monospace;
+    width: 100%;
+}
