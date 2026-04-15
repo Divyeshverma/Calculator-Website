@@ -3,6 +3,6 @@ import App from './App';
 
 test('renders calculator heading', () => {
   render(<App />);
-  expect(screen.getByText(/MERN Calculator/i)).toBeInTheDocument();
-  expect(screen.getByText(/Arithmetic calculator/i)).toBeInTheDocument();
+  expect(screen.getByText(/Frontend Calculator/i)).toBeInTheDocument();
+  expect(screen.getByText(/ready to deploy on Netlify/i)).toBeInTheDocument();
 });

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import './App.css';
 
 const buttons = [
@@ -13,39 +12,56 @@ const buttons = [
 const operatorMap = {
   x: '*',
   X: '*',
-  '÷': '/',
+  '/': '/',
 };
 
+const validExpressionPattern = /^[0-9+\-*/%.()\s]+$/;
 const endsWithOperator = (value) => /[+\-*/.%]$/.test(value);
+
+const evaluateExpression = (expression) => {
+  const trimmedExpression = String(expression || '').trim();
+
+  if (!trimmedExpression || trimmedExpression === '0') {
+    return { result: '0', status: 'Ready' };
+  }
+
+  if (!validExpressionPattern.test(trimmedExpression)) {
+    throw new Error('Only arithmetic operators and numbers are allowed.');
+  }
+
+  try {
+    const calculatedValue = Function(
+      `"use strict"; return (${trimmedExpression})`
+    )();
+
+    if (!Number.isFinite(calculatedValue)) {
+      throw new Error('Invalid result');
+    }
+
+    return {
+      result: String(Number(calculatedValue.toFixed(8))),
+      status: 'Calculated successfully',
+    };
+  } catch (error) {
+    throw new Error('Invalid arithmetic expression');
+  }
+};
 
 function App() {
   const [expression, setExpression] = useState('0');
   const [result, setResult] = useState('0');
   const [status, setStatus] = useState('Ready');
 
-  const displayExpression = useMemo(
-    () => expression.replace(/\*/g, 'x').replace(/\//g, '÷'),
-    [expression]
-  );
+  const displayExpression = useMemo(() => expression.replace(/\*/g, 'x'), [expression]);
 
-  const calculateResult = async (currentExpression) => {
-    if (!currentExpression || currentExpression === '0') {
-      setResult('0');
-      setStatus('Ready');
-      return;
-    }
-
+  const calculateResult = (currentExpression) => {
     try {
-      const response = await axios.post('/api/calculate', {
-        expression: currentExpression,
-      });
-      setResult(String(response.data.result));
-      setStatus('Calculated successfully');
+      const calculation = evaluateExpression(currentExpression);
+      setResult(calculation.result);
+      setStatus(calculation.status);
     } catch (error) {
       setResult('Error');
-      setStatus(
-        error.response?.data?.message || 'Unable to calculate the expression'
-      );
+      setStatus(error.message || 'Unable to calculate the expression');
     }
   };
 
@@ -101,7 +117,10 @@ function App() {
 
       const [, operator, operand] = parts;
       const value = operand || '0';
-      const start = previous.slice(0, previous.length - `${operator}${operand}`.length);
+      const start = previous.slice(
+        0,
+        previous.length - `${operator}${operand}`.length
+      );
 
       if (operator === '-') {
         return `${start}+${value}`;
@@ -138,7 +157,7 @@ function App() {
     });
   };
 
-  const handleButtonClick = async (value) => {
+  const handleButtonClick = (value) => {
     if (value === 'C') {
       clearAll();
       return;
@@ -155,7 +174,7 @@ function App() {
     }
 
     if (value === '=') {
-      await calculateResult(expression);
+      calculateResult(expression);
       return;
     }
 
@@ -163,14 +182,14 @@ function App() {
   };
 
   useEffect(() => {
-    const handleKeyDown = async (event) => {
+    const handleKeyDown = (event) => {
       const mappedKey = operatorMap[event.key] || event.key;
 
       if (/\d/.test(mappedKey) || ['+', '-', '*', '/', '.', '%'].includes(mappedKey)) {
         appendValue(mappedKey);
       } else if (mappedKey === 'Enter' || mappedKey === '=') {
         event.preventDefault();
-        await calculateResult(expression);
+        calculateResult(expression);
       } else if (mappedKey === 'Backspace') {
         deleteLast();
       } else if (mappedKey === 'Escape') {
@@ -180,17 +199,17 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [appendValue, calculateResult, clearAll, deleteLast, expression]);
+  }, [expression, result]);
 
   return (
     <main className="app-shell">
       <section className="calculator-card">
         <div className="calculator-copy">
-          <p className="eyebrow">MERN Calculator</p>
-          <h1>Arithmetic calculator with a React frontend and Express API.</h1>
+          <p className="eyebrow">Frontend Calculator</p>
+          <h1>Arithmetic calculator ready to deploy on Netlify.</h1>
           <p className="subcopy">
             Use the keypad or your keyboard to add, subtract, multiply, divide,
-            and work with percentages and decimals.
+            and work with percentages and decimals, all inside the frontend.
           </p>
         </div>
 
@@ -214,10 +233,10 @@ function App() {
                     : ''
                 } ${button === '0' ? 'wide' : ''}`}
                 onClick={() => {
-                  void handleButtonClick(button);
+                  handleButtonClick(button);
                 }}
               >
-                {button === '*' ? 'x' : button === '/' ? '÷' : button}
+                {button === '*' ? 'x' : button}
               </button>
             ))}
           </div>
