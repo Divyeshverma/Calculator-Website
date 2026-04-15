@@ -17,6 +17,82 @@ const operatorMap = {
 
 const validExpressionPattern = /^[0-9+\-*/%.()\s]+$/;
 const endsWithOperator = (value) => /[+\-*/.%]$/.test(value);
+const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '%': 2 };
+
+const tokenizeExpression = (expression) => {
+  const tokens = [];
+  let currentNumber = '';
+
+  for (let index = 0; index < expression.length; index += 1) {
+    const character = expression[index];
+
+    if (character === ' ') {
+      continue;
+    }
+
+    if (/\d|\./.test(character)) {
+      currentNumber += character;
+      continue;
+    }
+
+    if (
+      character === '-' &&
+      currentNumber === '' &&
+      (tokens.length === 0 || ['+', '-', '*', '/', '%', '('].includes(tokens[tokens.length - 1]))
+    ) {
+      currentNumber = '-';
+      continue;
+    }
+
+    if (currentNumber) {
+      tokens.push(currentNumber);
+      currentNumber = '';
+    }
+
+    tokens.push(character);
+  }
+
+  if (currentNumber) {
+    tokens.push(currentNumber);
+  }
+
+  return tokens;
+};
+
+const applyOperation = (values, operator) => {
+  const rightValue = values.pop();
+  const leftValue = values.pop();
+
+  if (leftValue === undefined || rightValue === undefined) {
+    throw new Error('Invalid arithmetic expression');
+  }
+
+  switch (operator) {
+    case '+':
+      values.push(leftValue + rightValue);
+      break;
+    case '-':
+      values.push(leftValue - rightValue);
+      break;
+    case '*':
+      values.push(leftValue * rightValue);
+      break;
+    case '/':
+      if (rightValue === 0) {
+        throw new Error('Cannot divide by zero');
+      }
+      values.push(leftValue / rightValue);
+      break;
+    case '%':
+      if (rightValue === 0) {
+        throw new Error('Cannot divide by zero');
+      }
+      values.push(leftValue % rightValue);
+      break;
+    default:
+      throw new Error('Invalid arithmetic expression');
+  }
+};
 
 const evaluateExpression = (expression) => {
   const trimmedExpression = String(expression || '').trim();
@@ -30,11 +106,57 @@ const evaluateExpression = (expression) => {
   }
 
   try {
-    const calculatedValue = Function(
-      `"use strict"; return (${trimmedExpression})`
-    )();
+    const tokens = tokenizeExpression(trimmedExpression);
+    const values = [];
+    const operators = [];
 
-    if (!Number.isFinite(calculatedValue)) {
+    tokens.forEach((token) => {
+      if (!Number.isNaN(Number(token))) {
+        values.push(Number(token));
+        return;
+      }
+
+      if (token === '(') {
+        operators.push(token);
+        return;
+      }
+
+      if (token === ')') {
+        while (operators.length && operators[operators.length - 1] !== '(') {
+          applyOperation(values, operators.pop());
+        }
+
+        if (operators.pop() !== '(') {
+          throw new Error('Invalid arithmetic expression');
+        }
+
+        return;
+      }
+
+      while (
+        operators.length &&
+        operators[operators.length - 1] !== '(' &&
+        precedence[operators[operators.length - 1]] >= precedence[token]
+      ) {
+        applyOperation(values, operators.pop());
+      }
+
+      operators.push(token);
+    });
+
+    while (operators.length) {
+      const operator = operators.pop();
+
+      if (operator === '(') {
+        throw new Error('Invalid arithmetic expression');
+      }
+
+      applyOperation(values, operator);
+    }
+
+    const calculatedValue = values.pop();
+
+    if (values.length || !Number.isFinite(calculatedValue)) {
       throw new Error('Invalid result');
     }
 
@@ -182,6 +304,7 @@ function App() {
   };
 
   useEffect(() => {
+    // Keyboard support uses the latest displayed expression for evaluation.
     const handleKeyDown = (event) => {
       const mappedKey = operatorMap[event.key] || event.key;
 
@@ -199,6 +322,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expression, result]);
 
   return (
